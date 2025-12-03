@@ -221,57 +221,20 @@ export const storageService = {
     filename?: string;
   }): Promise<void> {
     try {
-      // Use backend API to download file from HTTP URL
-      // Use fetchWithAuth to pass authorization header
       const downloadUrl = API_ENDPOINTS.storage.datamateDownload(options);
-      const response = await fetch(downloadUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.statusText}`);
-      }
-      
-      // Get the blob from response
-      const blob = await response.blob();
-      
-      // Get filename from Content-Disposition header or use provided filename
-      let downloadFilename = options.filename;
-      if (!downloadFilename) {
-        const contentDisposition = response.headers.get("Content-Disposition");
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
-          if (filenameMatch) {
-            downloadFilename = filenameMatch[1];
-          }
-        }
-      }
-      
-      // If still no filename, extract from URL
-      if (!downloadFilename) {
-        try {
-          const urlString = options.url || downloadUrl;
-          const urlObj = new URL(urlString);
-          const path = urlObj.pathname;
-          downloadFilename = path.split('/').pop() || "download";
-        } catch {
-          downloadFilename = "download";
-        }
-      }
-      
-      // Create download link and trigger download
-      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = downloadFilename;
+      link.href = downloadUrl;
+      // Only set download attribute when caller explicitly provides a filename.
+      // Otherwise, let the browser use the Content-Disposition header from backend,
+      // which already encodes the correct filename.
+      if (options.filename) {
+        link.download = options.filename;
+      }
       link.style.display = "none";
       document.body.appendChild(link);
-      
-      // Trigger download
       link.click();
-      
-      // Clean up
       setTimeout(() => {
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
       }, 100);
     } catch (error) {
       throw new Error(`Failed to download datamate file: ${error instanceof Error ? error.message : String(error)}`);
